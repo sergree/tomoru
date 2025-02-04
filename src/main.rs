@@ -23,6 +23,36 @@ struct AppState {
     ip_counts: HashMap<IpAddr, u64>,
 }
 
+impl AppState {
+    // Increment IP count
+    fn increment_ip_count(&mut self, ip: IpAddr) {
+        *self.ip_counts.entry(ip).or_default() += 1;
+    }
+
+    // Get sorted IP counts
+    fn get_sorted_ip_counts(&self) -> Vec<(IpAddr, u64)> {
+        // Collect and sort IP counts here since it (usually) runs less frequently
+        // than the increment_ip_count(), optimizing overall performance
+        let mut counts: Vec<_> = self
+            .ip_counts
+            .iter()
+            .map(|(ip, count)| (*ip, *count))
+            .collect();
+        counts.sort_by(|(_, a), (_, b)| b.cmp(a));
+        counts
+    }
+
+    // Format IP statistics
+    fn format_ip_stats(&self) -> String {
+        let counts = self.get_sorted_ip_counts();
+        let mut result = String::from("IPs:\n");
+        for (ip, count) in counts {
+            result.push_str(&format!("  {}: {}\n", ip, count));
+        }
+        result
+    }
+}
+
 /// Tracks request count per IP address and forwards the request
 async fn counter_middleware(
     State(app_state): State<Arc<Mutex<AppState>>>,
@@ -36,7 +66,7 @@ async fn counter_middleware(
             .map_err(|e| eprintln!("Lock poisoned in middleware: {}", e))
             .expect("Failed to acquire lock");
 
-        *stats.ip_counts.entry(addr.ip()).or_default() += 1;
+        stats.increment_ip_count(addr.ip());
     }
     next.run(request).await
 }
@@ -57,16 +87,7 @@ async fn print_stats(stats: Arc<Mutex<AppState>>) -> Result<()> {
             .lock()
             .map_err(|e| anyhow::anyhow!("Lock poisoned in print_stats: {}", e))?;
 
-        // Collect and sort IP counts here in the print function since it (usually) runs less frequently
-        // than the counter_middleware(), optimizing overall performance
-        let mut counts: Vec<_> = stats.ip_counts.iter().collect();
-        counts.sort_by(|(_, a), (_, b)| b.cmp(a));
-
-        println!("IPs:");
-        for (ip, count) in counts {
-            println!("  {}: {}", ip, count);
-        }
-        println!();
+        println!("{}", stats.format_ip_stats());
     }
 }
 
