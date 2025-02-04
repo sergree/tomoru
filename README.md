@@ -4,6 +4,11 @@ Simple service that counts HTTP requests per IP address.
 
 ## Usage
 
+0. Run tests:
+```bash
+cargo test
+```
+
 1. Run the service:
 ```bash
 cargo run
