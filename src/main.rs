@@ -127,3 +127,47 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    #[test]
+    fn increment_ip_count() {
+        let mut state = AppState::default();
+        let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+
+        state.increment_ip_count(ip);
+        assert_eq!(*state.ip_counts.get(&ip).unwrap(), 1);
+
+        state.increment_ip_count(ip);
+        assert_eq!(*state.ip_counts.get(&ip).unwrap(), 2);
+    }
+
+    #[test]
+    fn get_sorted_ip_counts() {
+        let mut state = AppState::default();
+        let ip1 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+        let ip2 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2));
+
+        state.increment_ip_count(ip1);
+        state.increment_ip_count(ip1);
+        state.increment_ip_count(ip2);
+
+        let sorted = state.get_sorted_ip_counts();
+        assert_eq!(sorted, vec![(ip1, 2), (ip2, 1)]);
+    }
+
+    #[test]
+    fn format_ip_stats() {
+        let mut state = AppState::default();
+        let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+
+        state.increment_ip_count(ip);
+
+        let formatted = state.format_ip_stats();
+        let expected = format!("IPs:\n  {}: 1\n", ip);
+        assert_eq!(formatted, expected);
+    }
+}
